@@ -183,6 +183,8 @@ class CLRHead(nn.Module):
 
     # forward function here
     def forward(self, x, **kwargs):
+        # input [torch.Size([24, 64, 80, 200]), torch.Size([24, 128, 40, 100]), torch.Size([24, 256, 20, 50]), 
+        # torch.Size([24, 512, 10, 25])]
         '''
         Take pyramid features as input to perform Cross Layer Refinement and finally output the prediction lanes.
         Each feature is a 4D tensor.
@@ -192,7 +194,8 @@ class CLRHead(nn.Module):
             prediction_list: each layer's prediction result
             seg: segmentation result for auxiliary loss
         '''
-        batch_features = list(x[len(x) - self.refine_layers:])
+        batch_features = list(x[len(x) - self.refine_layers:])  #4-3 =1--> [1:]
+        
         batch_features.reverse()  #reverse() 函数用于反向列表中元素。
         batch_size = batch_features[-1].shape[0]  
 
