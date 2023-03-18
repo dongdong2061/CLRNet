@@ -40,7 +40,8 @@ class CLRHead(nn.Module):
         self.sample_points = sample_points  #36
         self.refine_layers = refine_layers  #3
         self.fc_hidden_dim = fc_hidden_dim
-
+        # tensor([ 0,  2,  4,  6,  8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 
+        # 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 71])
         self.register_buffer(name='sample_x_indexs', tensor=(torch.linspace(
             0, 1, steps=self.sample_points, dtype=torch.float32) *
                                 self.n_strips).long())
@@ -208,6 +209,7 @@ class CLRHead(nn.Module):
         prior_features_stages = []
         for stage in range(self.refine_layers):
             num_priors = priors_on_featmap.shape[1]
+            # 
             prior_xs = torch.flip(priors_on_featmap, dims=[2]) 
 
             batch_prior_features = self.pool_prior_features(
