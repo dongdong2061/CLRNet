@@ -118,7 +118,7 @@ class FPN(nn.Module):
 
         # build laterals
         laterals = [
-            lateral_conv(inputs[i + self.start_level])
+            lateral_conv(inputs[i + self.start_level])  #0
             for i, lateral_conv in enumerate(self.lateral_convs)
         ]
 
