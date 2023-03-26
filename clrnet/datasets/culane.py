@@ -33,7 +33,7 @@ class CULane(BaseDataset):
     def __init__(self, data_root, split, processes=None, cfg=None):
         super().__init__(data_root, split, processes=processes, cfg=cfg)
         self.list_path = osp.join(data_root, LIST_FILE[split])
-        self.split = split
+        self.split = split  #train/test
         self.load_annotations()
 
     def load_annotations(self):

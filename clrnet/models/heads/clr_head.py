@@ -47,32 +47,42 @@ class CLRHead(nn.Module):
                                 self.n_strips).long())
         self.register_buffer(name='prior_feat_ys', tensor=torch.flip(
             (1 - self.sample_x_indexs.float() / self.n_strips), dims=[-1]))
+        #tensor([1.0000, 0.9859, 0.9718, 0.9577, 0.9437, 0.9296, 0.9155, 0.9014, 0.8873, 
+        # 0.8732, 0.8592, 0.8451, 0.8310, 0.8169, 0.8028, 0.7887, 0.7746, 0.7606, 
+        # 0.7465, 0.7324, 0.7183, 0.7042, 0.6901, 0.6761, 0.6620, 0.6479, 0.6338, 
+        # 0.6197, 0.6056, 0.5915, 0.5775, 0.5634, 0.5493, 0.5352, 0.5211, 0.5070, 
+        # 0.4930, 0.4789, 0.4648, 0.4507, 0.4366, 0.4225, 0.4085, 0.3944, 0.3803, 
+        # 0.3662, 0.3521, 0.3380, 0.3239, 0.3099, 0.2958, 0.2817, 0.2676, 0.2535, 
+        # 0.2394, 0.2254, 0.2113, 0.1972, 0.1831, 0.1690, 0.1549, 0.1408, 0.1268, 
+        # 0.1127, 0.0986, 0.0845, 0.0704, 0.0563, 0.0423, 0.0282, 0.0141, 0.0000])
         self.register_buffer(name='prior_ys', tensor=torch.linspace(1,
                                        0,
                                        steps=self.n_offsets,
                                        dtype=torch.float32))
 
-        self.prior_feat_channels = prior_feat_channels
+        self.prior_feat_channels = prior_feat_channels #64
 
         self._init_prior_embeddings()
+        #一种是72个点的priors，一种是在72个点上间隔采样得到的36点priors_on_featmap
         init_priors, priors_on_featmap = self.generate_priors_from_embeddings() #None, None
         self.register_buffer(name='priors', tensor=init_priors)
         self.register_buffer(name='priors_on_featmap', tensor=priors_on_featmap)
 
         # generate xys for feature map
+        #预测车道线数量
         self.seg_decoder = SegDecoder(self.img_h, self.img_w,
                                       self.cfg.num_classes,
-                                      self.prior_feat_channels,
+                                      self.prior_feat_channels, #64
                                       self.refine_layers)
 
         reg_modules = list()
         cls_modules = list()
-        for _ in range(num_fc):
+        for _ in range(num_fc): #num_fc 2
             reg_modules += [*LinearModule(self.fc_hidden_dim)]
             cls_modules += [*LinearModule(self.fc_hidden_dim)]
         self.reg_modules = nn.ModuleList(reg_modules)
         self.cls_modules = nn.ModuleList(cls_modules)
-
+        #
         self.roi_gather = ROIGather(self.prior_feat_channels, self.num_priors,
                                     self.sample_points, self.fc_hidden_dim,
                                     self.refine_layers)
@@ -83,7 +93,9 @@ class CLRHead(nn.Module):
         self.cls_layers = nn.Linear(self.fc_hidden_dim, 2)
 
         weights = torch.ones(self.cfg.num_classes)
-        weights[0] = self.cfg.bg_weight
+        weights[0] = self.cfg.bg_weight #0.4
+        #ignore_index(int)- 忽略某一类别，不计算其loss，其loss会为0，
+        #并且，在采用size_average时，不会计算那一类的loss，除的时候的分母也不会统计那一类的样本。
         self.criterion = torch.nn.NLLLoss(ignore_index=self.cfg.ignore_label,
                                      weight=weights)
 
@@ -107,14 +119,17 @@ class CLRHead(nn.Module):
         '''
 
         batch_size = batch_features.shape[0]
-
+        #[B,192,36,1]
         prior_xs = prior_xs.view(batch_size, num_priors, -1, 1)
+        #[B,192,36,1]
         prior_ys = self.prior_feat_ys.repeat(batch_size * num_priors).view(
             batch_size, num_priors, -1, 1)
 
         prior_xs = prior_xs * 2. - 1.
         prior_ys = prior_ys * 2. - 1.
+        ##[B,192,36,2]
         grid = torch.cat((prior_xs, prior_ys), dim=-1)
+        
         feature = F.grid_sample(batch_features, grid,
                                 align_corners=True).permute(0, 2, 1, 3)
 
@@ -133,7 +148,9 @@ class CLRHead(nn.Module):
 
         priors[:, 2:5] = predictions.clone()  
         #y 0 = t a n α ∗ x 0 + b  利用直线求72个点的坐标
-        #repeat() 沿着指定的维度，对原来的tensor进行数据复制  
+        #repeat() 沿着指定的维度，对原来的tensor进行数据复制 
+        # self.prior_ys.repeat(self.num_priors, 1) 192*72
+        #6~78就是72个采样点的x位置
         priors[:, 6:] = (                           
             priors[:, 3].unsqueeze(1).clone().repeat(1, self.n_offsets) * #(1,72)
             (self.img_w - 1) +
@@ -143,8 +160,10 @@ class CLRHead(nn.Module):
                  1, self.n_offsets) * math.pi + 1e-5))) / (self.img_w - 1)
 
         # init priors on feature map
-        priors_on_featmap = priors.clone()[..., 6 + self.sample_x_indexs]
-
+        # 6+self.sample_x_indexs tensor([ 6,  8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40,
+        # 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 77])
+        priors_on_featmap = priors.clone()[..., 6 + self.sample_x_indexs]  #192*36
+        #torch.Size([192, 78]) torch.Size([192, 42])
         return priors, priors_on_featmap
     #生成初始lane prior
     def _init_prior_embeddings(self):
@@ -155,7 +174,8 @@ class CLRHead(nn.Module):
         left_priors_nums, _ = self.num_priors // 8, self.num_priors // 8  #24
 
         strip_size = 0.5 / (left_priors_nums // 2 - 1)   #1/22
-        bottom_strip_size = 1 / (bottom_priors_nums // 4 + 1)  #1/39
+        bottom_strip_size = 1 / (bottom_priors_nums // 4 + 1)  #1/37
+        #初始化y,x,theta
         for i in range(left_priors_nums):
             nn.init.constant_(self.prior_embeddings.weight[i, 0],
                               (i // 2) * strip_size)  #使用后面的值来填充输入的Tensor
@@ -201,7 +221,7 @@ class CLRHead(nn.Module):
 
         if self.training:
             self.priors, self.priors_on_featmap = self.generate_priors_from_embeddings()
-        #将维度扩展至[batchsize,192,78]
+        #将维度扩展至[batchsize,192,78/42] torch.Size([192, 78])
         priors, priors_on_featmap = self.priors.repeat(batch_size, 1,
                                                   1), self.priors_on_featmap.repeat(
                                                       batch_size, 1, 1)
@@ -212,11 +232,12 @@ class CLRHead(nn.Module):
         prior_features_stages = []
         for stage in range(self.refine_layers):
             num_priors = priors_on_featmap.shape[1]
-            # 
+            #在最后一个维度进行反转 
             prior_xs = torch.flip(priors_on_featmap, dims=[2]) 
 
             batch_prior_features = self.pool_prior_features(
                 batch_features[stage], num_priors, prior_xs)
+            
             prior_features_stages.append(batch_prior_features)
 
             fc_features = self.roi_gather(prior_features_stages,
@@ -234,11 +255,11 @@ class CLRHead(nn.Module):
                 reg_features = reg_layer(reg_features)
 
             cls_logits = self.cls_layers(cls_features)
-            reg = self.reg_layers(reg_features)
+            reg = self.reg_layers(reg_features) #[fc,76]
 
             cls_logits = cls_logits.reshape(
                 batch_size, -1, cls_logits.shape[1])  # (B, num_priors, 2)
-            reg = reg.reshape(batch_size, -1, reg.shape[1])
+            reg = reg.reshape(batch_size, -1, reg.shape[1]) #[B, ,76]
 
             predictions = priors.clone()
             predictions[:, :, :2] = cls_logits

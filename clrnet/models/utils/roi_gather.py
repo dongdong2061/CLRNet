@@ -40,13 +40,14 @@ class ROIGather(nn.Module):
         super(ROIGather, self).__init__()
         self.in_channels = in_channels
         self.num_priors = num_priors
+        #output [B,in,w/2,h/2]
         self.f_key = ConvModule(in_channels=self.in_channels,
                                 out_channels=self.in_channels,
                                 kernel_size=1,
                                 stride=1,
                                 padding=0,
                                 norm_cfg=dict(type='BN'))
-
+        #output [B,in,w/2,h/2]
         self.f_query = nn.Sequential(
             nn.Conv1d(in_channels=num_priors,
                       out_channels=num_priors,
@@ -56,11 +57,13 @@ class ROIGather(nn.Module):
                       groups=num_priors),
             nn.ReLU(),
         )
+        #output [B,in,w/2,h/2]
         self.f_value = nn.Conv2d(in_channels=self.in_channels,
                                  out_channels=self.in_channels,
                                  kernel_size=1,
                                  stride=1,
                                  padding=0)
+        
         self.W = nn.Conv1d(in_channels=num_priors,
                            out_channels=num_priors,
                            kernel_size=1,
@@ -113,6 +116,7 @@ class ROIGather(nn.Module):
         '''
         roi = self.roi_fea(roi_features, layer_index)
         bs = x.size(0)
+        #contiguous()断开这两个变量之间的依赖,重新创建一个和roi一样的变量
         roi = roi.contiguous().view(bs * self.num_priors, -1)
 
         roi = F.relu(self.fc_norm(self.fc(roi)))
