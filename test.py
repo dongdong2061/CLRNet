@@ -30,19 +30,20 @@ import torch
 # print(a.repeat(192,1))
 # print(1-a.repeat(192,1))
 # print((a+(1-a.repeat(192,1))).shape)
-t = torch.tensor([ 0,  2,  4,  6,  8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 
-        36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 71])
-print(6+t)
-priors_on_featmap = torch.randn(192,78)
-print(priors_on_featmap.shape)
-priors_on_featmap = priors_on_featmap.clone()[..., 6+t]
-print(priors_on_featmap.shape)
+# t = torch.tensor([ 0,  2,  4,  6,  8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 
+#         36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 71])
+# print(6+t)
+# priors_on_featmap = torch.randn(192,78)
+# print(priors_on_featmap.shape)
+# priors_on_featmap = priors_on_featmap.clone()[..., 6+t]
+# print(priors_on_featmap.shape)
 # prior_xs = torch.flip(priors_on_featmap, dims=[2]) 
 # print(prior_xs)
 # prior_xs = prior_xs.view(1, 192, -1, 1)
 # print(prior_xs)
 
-
+t = torch.tensor([[-2,1],[2,3]])
+print(t.sigmoid())
 
 
 # if __name__ == "__mian__":

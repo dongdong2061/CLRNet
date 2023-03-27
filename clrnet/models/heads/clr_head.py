@@ -278,6 +278,7 @@ class CLRHead(nn.Module):
                  torch.tan(tran_tensor(predictions[..., 4]) * math.pi + 1e-5))) / (self.img_w - 1)
 
             prediction_lines = predictions.clone()
+            #[B,192,78]
             predictions[..., 6:] += reg[..., 4:]
 
             predictions_lists.append(predictions)

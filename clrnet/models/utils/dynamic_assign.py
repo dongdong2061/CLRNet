@@ -9,7 +9,7 @@ def distance_cost(predictions, targets, img_w):
     """
     num_priors = predictions.shape[0]
     num_targets = targets.shape[0]
-
+    #重复张量的元素
     predictions = torch.repeat_interleave(
         predictions, num_targets, dim=0
     )[...,
@@ -21,6 +21,7 @@ def distance_cost(predictions, targets, img_w):
                    6:]  # applying this 2 times on [c, d] gives [c, d, c, d]
 
     invalid_masks = (targets < 0) | (targets >= img_w)
+    #对布尔值求和
     lengths = (~invalid_masks).sum(dim=1)
     distances = torch.abs((targets - predictions))
     distances[invalid_masks] = 0.
@@ -101,7 +102,9 @@ def assign(
         matched_row_inds (Tensor): matched predictions, shape: (num_targets)
         matched_col_inds (Tensor): matched targets, shape: (num_targets)
     '''
+    #[192,78]
     predictions = predictions.detach().clone()
+    #获得x坐标
     predictions[:, 3] *= (img_w - 1)
     predictions[:, 6:] *= (img_w - 1)
     targets = targets.detach().clone()
@@ -120,7 +123,7 @@ def assign(
     target_start_xys[..., 0] *= (img_h - 1)
     prediction_start_xys = predictions[:, 2:4]
     prediction_start_xys[..., 0] *= (img_h - 1)
-
+    #每对行向量集合之间的p-norm距离 [B,a,b] [B,c,b]--> [B,a,c]
     start_xys_score = torch.cdist(prediction_start_xys, target_start_xys,
                                   p=2).reshape(num_priors, num_targets)
     start_xys_score = (1 - start_xys_score / torch.max(start_xys_score)) + 1e-2
