@@ -76,7 +76,7 @@ class sa_layer(nn.Module):
         x_0, x_1 = x.chunk(2, dim=1)
 
         # channel attention
-        xn = self.avg_pool(x_0)
+        xn = self.avg_pool(x_0) #使用池化层可能破坏了空间信息
         xn = self.cweight * xn + self.cbias
         xn = x_0 * self.sigmoid(xn)
 
